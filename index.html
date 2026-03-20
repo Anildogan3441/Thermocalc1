@@ -722,7 +722,7 @@ function resetMats(){if(!confirm("Varsayılana sıfırla?"))return;mats=[...DFLT
 function importXlsx(file){
   if(!file)return;
   const r=new FileReader();
-  r.onload=e=>{
+  r.onload=async e=>{
     try{
       let rows=[];
       if(file.name.endsWith(".csv")){rows=e.target.result.split(/\r?\n/).slice(1).filter(l=>l).map(l=>l.split(",").map(c=>c.trim()));}
@@ -740,7 +740,7 @@ function importXlsx(file){
           if(error)throw error;
         }
       }catch(e){console.error('Supabase bulk insert:',e);}
-      saveMats();renderMats();await loadMatsFromDB();
+      saveMats();renderMats();loadMatsFromDB();
       document.getElementById("imp-status").innerHTML=`<span style="color:var(--ac);">✓ ${n} malzeme aktarıldı.</span>`;
     }catch(err){document.getElementById("imp-status").innerHTML='<span style="color:var(--wn);">Hata: Dosya okunamadı.</span>';}
   };
