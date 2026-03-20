@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ThermoCalc Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0f1117;--bg2:#161820;--bg3:#1c1e27;--bg4:#222430;--bdr:rgba(255,255,255,0.07);--bdr2:rgba(255,255,255,0.13);--tx:#e8eaf0;--tx2:#9099b0;--tx3:#5a6278;--ac:#00d4a0;--ac2:#00b389;--adm:rgba(0,212,160,0.12);--adm2:rgba(0,212,160,0.06);--wn:#ff6b6b;--wdm:rgba(255,107,107,0.12);--amb:#ffb347;--adm3:rgba(255,179,71,0.12);--blu:#5b9cf6;--bdm:rgba(91,156,246,0.12);--r:10px;--rs:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+.hdr{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--bdr);background:var(--bg2);position:sticky;top:0;z-index:100;}
+.logo-tx{font-family:'Syne',sans-serif;font-size:16px;letter-spacing:-.02em;}
+.logo-sub{font-size:11px;color:var(--tx3);margin-top:1px;}
+.hdr-r{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.live{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--tx3);}
+.ldot{width:6px;height:6px;background:var(--ac);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.layout{display:flex;height:calc(100vh - 57px);}
+.side{width:190px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bdr);padding:8px 0;}
+.ni{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13px;color:var(--tx2);cursor:pointer;border-left:2px solid transparent;transition:all .15s;}
+.ni:hover{color:var(--tx);background:var(--bg3);}
+.ni.active{color:var(--ac);border-left-color:var(--ac);background:var(--adm2);}
+.ndiv{height:1px;background:var(--bdr);margin:6px 12px;}
+.main{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;}
+.panel{display:none;flex-direction:column;gap:14px;}
+.panel.active{display:flex;}
+.card{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;}
+.ch{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.ch::after{content:'';flex:1;height:1px;background:var(--bdr);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+label{font-size:11px;color:var(--tx3);display:block;margin-bottom:4px;letter-spacing:.04em;}
+input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);color:var(--tx);font-size:13px;padding:7px 10px;font-family:'DM Sans',sans-serif;outline:none;}
+input:focus,select:focus{border-color:var(--ac);}
+select option{background:var(--bg3);}
+.fg{display:flex;flex-direction:column;gap:0;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;font-size:13px;border-radius:var(--rs);cursor:pointer;border:1px solid var(--bdr2);background:var(--bg3);color:var(--tx);font-family:'DM Sans',sans-serif;transition:all .15s;}
+.btn:hover{background:var(--bg4);}
+.btn:active{transform:scale(.98);}
+.bta{background:var(--ac);color:#000;border-color:var(--ac);font-weight:500;}
+.bta:hover{background:var(--ac2);}
+.btd{border-color:rgba(255,107,107,.3);color:var(--wn);}
+.btd:hover{background:var(--wdm);}
+.btsm{padding:4px 9px;font-size:12px;}
+.brow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+/* HERO */
+.hero{text-align:center;padding:24px 20px 18px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 30%,rgba(0,212,160,0.06),transparent);pointer-events:none;}
+.hero-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:8px;}
+.hero-big{font-family:'DM Mono',monospace;font-size:clamp(60px,12vw,110px);font-weight:500;line-height:.9;transition:color .3s;}
+.hero-deg{font-family:'DM Mono',monospace;font-size:clamp(24px,4vw,38px);color:var(--tx2);margin-left:4px;}
+.hero-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;margin-top:12px;}
+.hp-ok{background:var(--adm);color:var(--ac);border:1px solid rgba(0,212,160,.2);}
+.hp-warn{background:var(--wdm);color:var(--wn);border:1px solid rgba(255,107,107,.2);}
+.sub-row{display:flex;justify-content:center;gap:28px;margin-top:14px;flex-wrap:wrap;}
+.sn-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;}
+.sn-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+/* METRICS */
+.met{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:11px;}
+.met-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.met-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;}
+/* LAYER */
+.li{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);transition:border-color .15s;}
+.li:hover{border-color:var(--bdr2);}
+.li.dragging{opacity:.4;}
+.li.drag-over{border-color:var(--ac);border-style:dashed;}
+.dh{cursor:grab;color:var(--tx3);font-size:16px;user-select:none;}
+.lsw{width:10px;height:34px;border-radius:3px;flex-shrink:0;}
+.lnm{font-size:13px;font-weight:500;}
+.lsb{font-size:11px;color:var(--tx3);margin-top:1px;font-family:'DM Mono',monospace;}
+.ltmp{text-align:right;min-width:120px;}
+.tin{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--ac);}
+.tarr{font-size:11px;color:var(--tx3);margin:0 3px;}
+.tout{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--blu);}
+.lempty{text-align:center;padding:24px;color:var(--tx3);font-size:13px;border:1px dashed var(--bdr);border-radius:var(--rs);}
+.scrl{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+.tbar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--adm2);border:1px solid rgba(0,212,160,.2);border-radius:var(--rs);margin-top:10px;}
+.tv{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--ac);}
+/* MAT DROPDOWN */
+.mat-drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--bg2);border:1px solid var(--ac);border-radius:var(--rs);z-index:999;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.mdi{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--bdr);}
+.mdi:last-child{border-bottom:none;}
+.mdi:hover,.mdi.act{background:var(--adm);}
+.mdc{padding:5px 12px 3px;font-size:10px;color:var(--tx3);text-transform:uppercase;font-weight:600;background:var(--bg3);border-bottom:1px solid var(--bdr);}
+.mdn{font-size:13px;font-weight:500;}
+.mdm{font-size:11px;color:var(--tx3);font-family:'DM Mono',monospace;margin-top:2px;}
+.mdhl{color:var(--ac);font-weight:700;}
+/* INTERFACE TABLE */
+.ift{width:100%;border-collapse:collapse;font-size:12px;}
+.ift th{padding:6px 10px;font-size:10px;font-weight:600;color:var(--tx3);text-align:left;border-bottom:1px solid var(--bdr);background:var(--bg3);text-transform:uppercase;letter-spacing:.05em;}
+.ift td{padding:8px 10px;border-bottom:1px solid var(--bdr);}
+.ift tr:hover td{background:var(--bg3);}
+/* MAT TABLE */
+.mt{width:100%;border-collapse:collapse;font-size:12px;}
+.mt th{padding:6px 9px;font-size:10px;font-weight:600;color:var(--tx3);text-align:left;border-bottom:1px solid var(--bdr);background:var(--bg3);text-transform:uppercase;}
+.mt td{padding:7px 9px;border-bottom:1px solid var(--bdr);}
+.mt tr:hover td{background:var(--bg3);}
+/* BADGES */
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
+.bok{background:var(--adm);color:var(--ac);}
+.bbl{background:var(--bdm);color:var(--blu);}
+.bamb{background:var(--adm3);color:var(--amb);}
+.bgr{background:rgba(255,255,255,.06);color:var(--tx2);}
+/* DEW */
+.dew{padding:8px 12px;border-radius:var(--rs);font-size:12px;}
+.dok{background:var(--adm);border:1px solid rgba(0,212,160,.2);color:var(--ac);}
+.dwn{background:var(--wdm);border:1px solid rgba(255,107,107,.2);color:var(--wn);}
+/* AI */
+.aib{padding:11px 13px;border-radius:var(--rs);font-size:13px;line-height:1.65;margin-bottom:7px;}
+.aia{background:var(--adm);border:1px solid rgba(0,212,160,.15);border-left:3px solid var(--ac);}
+.aiu{background:var(--bg3);border:1px solid var(--bdr);color:var(--tx2);text-align:right;}
+.ait{background:var(--bg3);border:1px solid var(--bdr);color:var(--tx3);font-style:italic;}
+/* UPLOAD */
+.upl{border:1.5px dashed var(--bdr2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:all .2s;}
+.upl:hover,.upl.drag{border-color:var(--ac);background:var(--adm2);}
+/* ARCHIVE */
+.arc{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:13px 15px;margin-bottom:8px;}
+.acbd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.apnm{font-size:14px;font-weight:600;}
+.ano{font-family:'DM Mono',monospace;font-size:11px;color:var(--tx3);margin-top:2px;}
+.amet{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.ach{padding:3px 9px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;font-weight:500;}
+.aok{background:var(--adm);color:var(--ac);}
+.abl{background:var(--bdm);color:var(--blu);}
+.mono{font-family:'DM Mono',monospace;}
+.cwrap{position:relative;width:100%;}
+.stchip{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 12px;font-size:12px;color:var(--tx2);}
+.stchip strong{color:var(--ac);font-family:'DM Mono',monospace;}
+@media(max-width:768px){
+  .side{display:none;}
+  .g2{grid-template-columns:1fr;}
+  #mob-nav{display:block !important;}
+  .layout{height:auto;min-height:calc(100vh - 57px - 58px);}
+  .main{padding:10px;padding-bottom:80px;gap:10px;}
+  .hero-big{font-size:56px !important;}
+  .hero{padding:18px 14px 14px;}
+  .sub-row{gap:16px;}
+  .sn-val{font-size:16px;}
+  .mat-drop{max-height:220px;position:fixed;left:10px;right:10px;z-index:9999;}
+  input,select,textarea{font-size:16px !important;-webkit-text-size-adjust:100%;}
+  .brow{gap:6px;}
+  .btn{padding:9px 12px;font-size:13px;}
+  .bta{padding:10px 16px;}
+  .card{padding:12px;}
+  .hero-pill{font-size:11px;padding:5px 10px;}
+  .cwrap canvas{max-height:180px;}
+  .acbd{flex-direction:column;gap:6px;}
+  table{font-size:11px;}
+  .ift th,.ift td,.mt th,.mt td{padding:5px 6px;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <img src="data:image/png;base64,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" alt="Prokom" style="height:34px;width:34px;object-fit:cover;border-radius:8px;">
+  <div style="width:1px;height:28px;background:var(--bdr2);"></div>
+  <div><div class="logo-tx">ThermoCalc Pro</div><div class="logo-sub">Yalıtım Tasarım Merkezi</div></div>
+  <div class="hdr-r" style="flex-wrap:wrap;">
+    <div class="live"><div class="ldot"></div>Canlı hesaplama</div>
+    <button class="btn btsm" onclick="exportData()">Yedeğe al</button>
+    <button class="btn btsm" onclick="document.getElementById('bkin').click()">Yedeği yükle</button>
+    <input type="file" id="bkin" style="display:none" accept=".json" onchange="importData(this.files[0])">
+  </div>
+</div>
+
+<div class="layout">
+  <div id="mob-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--bdr);z-index:200;padding:4px 0;">
+  <div style="display:flex;justify-content:space-around;">
+    <div onclick="nav('analysis')" style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;cursor:pointer;color:var(--tx2);font-size:10px;gap:4px;" id="mn-analysis">
+      <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><path d="M1 11l4-4 3 3 5-7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Analiz
+    </div>
+    <div onclick="nav('materials')" style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;cursor:pointer;color:var(--tx2);font-size:10px;gap:4px;" id="mn-materials">
+      <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><rect x="1" y="2.5" width="13" height="3" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="7.5" width="13" height="3" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>Malzeme
+    </div>
+    <div onclick="nav('ai')" style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;cursor:pointer;color:var(--tx2);font-size:10px;gap:4px;" id="mn-ai">
+      <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M2 13c0-3 2.5-4.5 5.5-4.5S13 10 13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>AI
+    </div>
+    <div onclick="nav('archive')" style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;cursor:pointer;color:var(--tx2);font-size:10px;gap:4px;" id="mn-archive">
+      <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="2" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M2 5v8a1 1 0 001 1h9a1 1 0 001-1V5" stroke="currentColor" stroke-width="1.3"/></svg>Arşiv
+    </div>
+  </div>
+</div>
+<div class="side">
+    <div class="ni active" onclick="nav('analysis')">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M1 11l4-4 3 3 5-7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Termal Analiz
+    </div>
+    <div class="ni" onclick="nav('materials')">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2.5" width="13" height="3" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="7.5" width="13" height="3" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="12" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".5"/></svg>
+      Malzeme DB
+    </div>
+    <div class="ni" onclick="nav('ai')">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M2 13c0-3 2.5-4.5 5.5-4.5S13 10 13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      AI Danışman
+    </div>
+    <div class="ndiv"></div>
+    <div class="ni" onclick="nav('archive')">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="2" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M2 5v8a1 1 0 001 1h9a1 1 0 001-1V5" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Arşiv <span id="arc-badge" style="margin-left:auto;background:var(--ac);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;">0</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ANALİZ -->
+    <div id="p-analysis" class="panel active">
+      <div class="hero">
+        <div class="hero-lbl">Yalıtım Dış Yüzey Sıcaklığı</div>
+        <div><span class="hero-big" id="h-surf" style="color:var(--ac);">—</span><span class="hero-deg">°C</span></div>
+        <div id="h-pill" class="hero-pill hp-ok">Katman ekleyin</div>
+        <div class="sub-row">
+          <div><div class="sn-val" id="h-ic">20°C</div><div class="sn-lbl">İç ortam</div></div>
+          <div style="color:var(--tx3);font-size:22px;margin-top:4px;">→</div>
+          <div><div class="sn-val" id="h-icy" style="color:var(--ac);">—</div><div class="sn-lbl">Yal. iç yüzeyi</div></div>
+          <div style="color:var(--tx3);font-size:22px;margin-top:4px;">⋯</div>
+          <div><div class="sn-val" id="h-disy" style="color:var(--ac);">—</div><div class="sn-lbl">Yal. dış yüzeyi</div></div>
+          <div style="color:var(--tx3);font-size:22px;margin-top:4px;">→</div>
+          <div><div class="sn-val" id="h-dis">-10°C</div><div class="sn-lbl">Ortam</div></div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="ch">Sıcaklık Koşulları</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="g2">
+              <div class="fg"><label>İç sıcaklık (°C)</label><input type="number" id="ti" value="20" oninput="calc()"></div>
+              <div class="fg"><label>Ortam sıcaklığı (°C)</label><input type="number" id="to" value="-10" oninput="calc()"></div>
+            </div>
+            <div class="fg"><label>Hedef yüzey sıcaklığı (°C)</label><input type="number" id="tt" value="50" oninput="calc()"></div>
+            <div class="fg">
+              <label>Uygulama tipi</label>
+              <select id="apptype" onchange="onAppType()">
+                <option value="boru" data-rh="70">🔧 Endüstriyel boru hattı</option>
+                <option value="soguk" data-rh="85">❄️ Soğuk hava deposu</option>
+                <option value="firin" data-rh="20">🔥 Fırın / yüksek sıcaklık</option>
+                <option value="turbin" data-rh="45">⚙️ Türbin / kompresör</option>
+                <option value="kazan" data-rh="55">💨 Kazan / buhar hattı</option>
+                <option value="deniz" data-rh="85">🚢 Denizcilik / offshore</option>
+              </select>
+              <div style="font-size:11px;color:var(--tx3);margin-top:4px;">Yoğuşma için bağıl nem: <span id="rh-show" style="color:var(--ac);font-family:'DM Mono',monospace;font-weight:600;">%70</span> <span id="rh-hint">· açık hava için</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch">Hesap Sonuçları</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            <div class="met"><div class="met-lbl">U Değeri</div><div class="met-val" id="r-u">—</div><div style="font-size:10px;color:var(--tx3);">W/m²K</div></div>
+            <div class="met"><div class="met-lbl">R Toplam</div><div class="met-val" id="r-rt">—</div><div style="font-size:10px;color:var(--tx3);">m²K/W</div></div>
+            <div class="met"><div class="met-lbl">Isı Akısı</div><div class="met-val" id="r-q">—</div><div style="font-size:10px;color:var(--tx3);">W/m²</div></div>
+            <div class="met"><div class="met-lbl">Hedef Durum</div><div id="r-tgt" style="margin-top:4px;font-size:12px;">—</div></div>
+            <div class="met"><div class="met-lbl">Yoğuşma</div><div id="r-dew" style="margin-top:4px;font-size:12px;">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch">Katman Yapısı</div>
+        <div class="brow" style="margin-bottom:12px;flex-wrap:wrap;">
+          <div class="fg" style="flex:2;min-width:150px;position:relative;">
+            <label>Malzeme</label>
+            <input type="text" id="mat-srch" placeholder="Ara: taş yünü, XPS, PUR..." autocomplete="off"
+              oninput="openDrop()" onfocus="openDrop()" onclick="openDrop()" onkeydown="dropKey(event)" style="padding-right:26px;">
+            <span style="position:absolute;right:8px;top:24px;color:var(--tx3);pointer-events:none;">▾</span>
+            <input type="hidden" id="mat-id">
+            <div id="mat-drop" class="mat-drop" style="display:none;"></div>
+          </div>
+          <div class="fg" style="width:88px;"><label>Kalınlık (mm)</label><input type="number" id="mat-th" value="50" min="1"></div>
+          <div style="display:flex;gap:6px;align-self:flex-end;">
+            <button class="btn bta btsm" onclick="addLayer()">+ Ekle</button>
+            <button class="btn btsm" onclick="clearLayers()">Temizle</button>
+          </div>
+        </div>
+        <div id="layers" class="scrl"><div class="lempty">Malzeme seçip ekleyin.</div></div>
+        <div id="tbar" style="display:none;" class="tbar">
+          <span style="font-size:10px;color:var(--ac);text-transform:uppercase;letter-spacing:.06em;">Toplam kalınlık</span>
+          <span class="tv" id="tot-mm">0</span><span style="font-size:12px;color:var(--tx2);">mm</span>
+          <span style="color:var(--bdr2);margin:0 6px;">|</span>
+          <span class="tv" id="tot-cm" style="font-size:18px;">0</span><span style="font-size:12px;color:var(--tx2);">cm</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch">Katman Şeması — Ölçekli Kesit</div>
+        <div id="schem-empty" style="text-align:center;padding:28px;color:var(--tx3);font-size:13px;border:1px dashed var(--bdr);border-radius:var(--rs);">Katman ekleyince şematik görünür</div>
+        <svg id="schem-svg" style="display:none;width:100%;"></svg>
+      </div>
+
+      <div class="card"><div class="ch">Arayüz Sıcaklıkları</div>
+        <div style="overflow-x:auto;"><table class="ift"><thead><tr><th>Konum</th><th>Sıcaklık</th><th>Düşüş</th><th>Katman</th></tr></thead><tbody id="ift-body"><tr><td colspan="4" style="text-align:center;color:var(--tx3);padding:14px;">Katman ekleyince görünür</td></tr></tbody></table></div>
+      </div>
+
+      <div class="card"><div class="ch">Sıcaklık Dağılım Profili</div><div class="cwrap" style="height:220px;"><canvas id="tc"></canvas></div></div>
+      <div class="card"><div class="ch">Yoğuşma — Çiğ Noktası</div><div class="cwrap" style="height:190px;"><canvas id="dc"></canvas></div></div>
+
+      <div class="card">
+        <div class="ch">Rapor Oluştur</div>
+        <div class="g2" style="margin-bottom:12px;">
+          <div class="fg"><label>Proje / Müşteri</label><input type="text" id="rp-prj" placeholder="Proje adı"></div>
+          <div class="fg"><label>Uygulama yeri</label><input type="text" id="rp-loc" placeholder="Soğuk depo, boru hattı..."></div>
+          <div class="fg"><label>Hazırlayan mühendis</label><input type="text" id="rp-aut" placeholder="Ad Soyad"></div>
+          <div class="fg"><label>Tarih</label><input type="text" id="rp-dat"></div>
+        </div>
+        <div class="brow">
+          <button class="btn bta" onclick="buildReport()">Rapor oluştur</button>
+          <button class="btn btsm" onclick="printReport()">🖨 PDF kaydet</button>
+        </div>
+        <div id="rep-out" style="display:none;margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- MALZEME DB -->
+    <div id="p-materials" class="panel">
+      <div class="card">
+        <div class="ch">Excel'den İçe Aktar</div>
+        <div class="upl" id="upl-area" onclick="document.getElementById('xlsx-in').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+          <div style="font-size:28px;margin-bottom:8px;">📂</div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Excel veya CSV sürükleyin</div>
+          <div style="font-size:12px;color:var(--tx3);">.xlsx / .csv · Sütunlar: Ad, λ, Kalınlık, Yoğunluk, µ, Kategori</div>
+        </div>
+        <input type="file" id="xlsx-in" accept=".xlsx,.xls,.csv" style="display:none" onchange="importXlsx(this.files[0])">
+        <div class="brow" style="margin-top:10px;">
+          <button class="btn btsm" onclick="dlTemplate()">📥 Şablon indir</button>
+          <button class="btn btsm btd" onclick="resetMats()">↺ Varsayılanlara sıfırla</button>
+        </div>
+        <div id="imp-status" style="margin-top:7px;font-size:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="ch">Manuel Ekle</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="min-width:150px;flex:2;"><label>Ad</label><input type="text" id="mn-nm" placeholder="Malzeme adı"></div>
+          <div class="fg" style="width:80px;"><label>λ (W/mK)</label><input type="number" id="mn-lm" value="0.035" step="0.001"></div>
+          <div class="fg" style="width:88px;"><label>Kalınlık (mm)</label><input type="number" id="mn-th" value="50"></div>
+          <div class="fg" style="width:80px;"><label>Yoğunluk</label><input type="number" id="mn-dn" value="40"></div>
+          <div class="fg" style="width:65px;"><label>µ</label><input type="number" id="mn-mu" value="1"></div>
+          <div class="fg" style="width:100px;"><label>Kategori</label><select id="mn-ct"><option>Mineral</option><option>Plastik</option><option>Kauçuk</option><option>Metal</option><option>Yapısal</option><option>İleri</option><option>Özel</option></select></div>
+          <button class="btn bta btsm" onclick="addMat()">Ekle</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">Veritabanı — <span id="mat-cnt">0</span> malzeme
+  <button class="btn btsm" onclick="loadMatsFromDB()" style="margin-left:8px;font-size:11px;">↺ Senkronize et</button>
+</div>
+<div id="db-status" style="font-size:12px;color:var(--tx3);margin-bottom:10px;">Veritabanına bağlanıyor...</div>
+        <div style="overflow-x:auto;"><table class="mt"><thead><tr><th>Malzeme</th><th>λ</th><th>Kalınlık</th><th>Yoğunluk</th><th>µ</th><th>Kategori</th><th></th></tr></thead><tbody id="mat-tbl"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div id="p-ai" class="panel">
+      <div class="card">
+        <div class="ch">Claude AI Danışman</div>
+        <div class="brow" style="margin-bottom:10px;">
+          <button class="btn bta btsm" onclick="ai('opt')">Optimize et ↗</button>
+          <button class="btn btsm" onclick="ai('dew')">Yoğuşma analizi ↗</button>
+          <button class="btn btsm" onclick="ai('alt')">Alternatif öner ↗</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <textarea id="ai-q" rows="2" placeholder="Özel soru..." style="resize:vertical;"></textarea>
+          <button class="btn btsm" onclick="aiCustom()" style="align-self:flex-start;white-space:nowrap;">Gönder ↗</button>
+        </div>
+      </div>
+      <div id="ai-chat"><div class="aib aia">Merhaba! Katman yapısını analiz edip optimize etmem, yoğuşma riski değerlendirmem için buradayım.</div></div>
+    </div>
+
+    <!-- ARŞİV -->
+    <div id="p-archive" class="panel">
+      <div class="card">
+        <div class="ch">Rapor Arşivi</div>
+        <div class="brow" style="margin-bottom:12px;">
+          <div class="fg" style="flex:1;min-width:160px;"><label>Ara</label><input type="text" id="arc-srch" placeholder="Proje, mühendis, rapor no..." oninput="renderArchive()"></div>
+          <button class="btn btsm btd" onclick="clearArchive()" style="align-self:flex-end;">Arşivi temizle</button>
+        </div>
+        <div id="arc-stats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+        <div id="arc-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══ SUPABASE ═══
+const SUPA_URL = 'https://ucibmaaniokinfijqhdh.supabase.co';
+const SUPA_KEY = 'sb_publishable_DsABQCs7dEAqb8VdP63zTw_0Rc5lert';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ═══ VERİ ═══
+const DFLT=[
+  {id:1,name:"Taş yünü (40 kg/m³)",lambda:0.035,thickness:50,density:40,mu:1,cat:"Mineral"},
+  {id:2,name:"Taş yünü (100 kg/m³)",lambda:0.040,thickness:50,density:100,mu:1,cat:"Mineral"},
+  {id:3,name:"Cam yünü (16 kg/m³)",lambda:0.032,thickness:80,density:16,mu:1,cat:"Mineral"},
+  {id:4,name:"EPS (Genişletilmiş PS)",lambda:0.038,thickness:50,density:20,mu:40,cat:"Plastik"},
+  {id:5,name:"XPS (Ekstrüde PS)",lambda:0.033,thickness:60,density:35,mu:100,cat:"Plastik"},
+  {id:6,name:"PUR / PIR köpük",lambda:0.022,thickness:40,density:40,mu:60,cat:"Plastik"},
+  {id:7,name:"Elastomerik kauçuk",lambda:0.036,thickness:25,density:65,mu:7000,cat:"Kauçuk"},
+  {id:8,name:"Aerojel battaniye",lambda:0.015,thickness:20,density:120,mu:5,cat:"İleri"},
+  {id:9,name:"Galvaniz sac",lambda:50,thickness:0.5,density:7800,mu:999999,cat:"Metal"},
+  {id:10,name:"Alüminyum folyo",lambda:200,thickness:0.1,density:2700,mu:999999,cat:"Metal"},
+  {id:11,name:"Alçıpan",lambda:0.25,thickness:12.5,density:800,mu:8,cat:"Yapısal"},
+  {id:12,name:"Beton",lambda:1.70,thickness:150,density:2300,mu:80,cat:"Yapısal"},
+];
+const CLR=["#00d4a0","#5b9cf6","#ffb347","#ff7eb3","#a78bfa","#34d399","#f87171","#60a5fa","#fbbf24","#c084fc"];
+const CBDG={Mineral:"bok",Plastik:"bbl",Kauçuk:"bamb",Metal:"bgr",Yapısal:"bgr",İleri:"bok",Özel:"bamb"};
+const RH_MAP={boru:{rh:70,hint:"açık hava"},soguk:{rh:85,hint:"soğuk depo"},firin:{rh:20,hint:"yüksek sıcaklık"},turbin:{rh:45,hint:"makine dairesi"},kazan:{rh:55,hint:"buhar ortamı"},deniz:{rh:85,hint:"deniz havası"}};
+
+let mats, nid, layers=[], CH={}, dIdx=-1;
+
+function loadMats(){
+  try{const s=JSON.parse(localStorage.getItem("tc-m"));if(s&&s.length)return s;}catch(e){}
+  return [...DFLT];
+}
+mats=loadMats();
+nid=Math.max(...mats.map(m=>m.id))+1;
+
+// Supabase'den malzemeleri yükle
+async function loadMatsFromDB(){
+  try{
+    const{data,error}=await supa.from('materials').select('*').order('id');
+    if(error)throw error;
+    if(data&&data.length){
+      mats=data.map(m=>({id:m.id,name:m.name,lambda:m.lambda,thickness:m.thickness,density:m.density,mu:m.mu,cat:m.cat}));
+      nid=Math.max(...mats.map(m=>m.id))+1;
+      saveMats();
+      renderMats();
+      showDBStatus('✓ Veritabanı bağlı — '+mats.length+' malzeme yüklendi','ok');
+    }
+  }catch(e){
+    showDBStatus('⚠ Veritabanına bağlanılamadı, yerel liste kullanılıyor','warn');
+    console.error('Supabase load error:',e);
+  }
+}
+
+function showDBStatus(msg,type){
+  let el=document.getElementById('db-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=type==='ok'?'var(--ac)':'var(--amb)';
+}
+
+function saveMats(){try{localStorage.setItem("tc-m",JSON.stringify(mats));}catch(e){}}
+function gi(id){return parseFloat(document.getElementById(id).value)||0;}
+function getRH(){const s=document.getElementById("apptype");return s?parseFloat(s.options[s.selectedIndex].dataset.rh)||70:70;}
+function dp(T,rh){const a=17.27,b=237.7,al=(a*T)/(b+T)+Math.log(rh/100);return(b*al)/(a-al);}
+
+// ═══ NAV ═══
+function nav(name){
+  document.querySelectorAll(".ni").forEach(el=>{
+    el.classList.toggle("active",el.getAttribute("onclick")==="nav('"+name+"')");
+  });
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  const p=document.getElementById("p-"+name);
+  if(p)p.classList.add("active");
+  if(name==="archive")renderArchive();
+  // Mobil alt nav aktif durumu
+  ["analysis","materials","ai","archive"].forEach(n=>{
+    const el=document.getElementById("mn-"+n);
+    if(el)el.style.color=n===name?"var(--ac)":"var(--tx2)";
+  });
+}
+
+// ═══ UYGULAMA TİPİ ═══
+function onAppType(){
+  const s=document.getElementById("apptype");
+  const val=s.value;
+  const info=RH_MAP[val]||{rh:70,hint:"genel"};
+  document.getElementById("rh-show").textContent="%"+info.rh;
+  document.getElementById("rh-hint").textContent="· "+info.hint+" için";
+  calc();
+}
+
+// ═══ HESAPLAMA ═══
+function calcInterfaces(arr,ti,to){
+  const Rt=0.13+0.04+arr.reduce((s,l)=>s+l.R,0);
+  const pts=[{label:"İç hava",temp:ti}];
+  let cumR=0.13;
+  pts.push({label:"İç yüzey",temp:ti-(cumR/Rt)*(ti-to),layerName:"İç konv."});
+  arr.forEach((l,i)=>{
+    cumR+=l.R;
+    pts.push({label:i===arr.length-1?"Dış yüzey":"Ara yüzey "+(i+1),temp:ti-(cumR/Rt)*(ti-to),layerName:l.name});
+  });
+  pts.push({label:"Dış hava",temp:to});
+  return{pts,Rt,U:1/Rt};
+}
+
+function calc(){
+  const ti=gi("ti")||20,to=gi("to")||-10,tt=gi("tt")||50,rh=getRH();
+  document.getElementById("h-ic").textContent=ti+"°C";
+  document.getElementById("h-dis").textContent=to+"°C";
+  if(!layers.length){
+    document.getElementById("h-surf").textContent="—";
+    document.getElementById("h-surf").style.color="var(--ac)";
+    document.getElementById("h-pill").textContent="Katman ekleyin";
+    document.getElementById("h-pill").className="hero-pill hp-ok";
+    document.getElementById("h-icy").textContent="—";
+    document.getElementById("h-disy").textContent="—";
+    document.getElementById("r-u").textContent="—";
+    document.getElementById("r-rt").textContent="—";
+    document.getElementById("r-q").textContent="—";
+    document.getElementById("r-tgt").textContent="—";
+    document.getElementById("r-dew").textContent="—";
+    document.getElementById("ift-body").innerHTML="<tr><td colspan='4' style='text-align:center;color:var(--tx3);padding:14px;'>Katman ekleyince görünür</td></tr>";
+    renderLayers();
+    drawCharts(ti,to,[],rh);
+    drawSchematic([],ti,to);
+    return;
+  }
+  const{pts,Rt,U}=calcInterfaces(layers,ti,to);
+  const q=U*(ti-to);
+  const outerSurf=pts[pts.length-2].temp;
+  const innerSurf=pts[1].temp;
+  const dpV=dp(ti,rh);
+  const targetMet=outerSurf<=tt;
+  const diff=Math.abs(outerSurf-tt).toFixed(1);
+
+  // Hero
+  const big=document.getElementById("h-surf");
+  big.textContent=outerSurf.toFixed(1);
+  const pct=(outerSurf-to)/(ti-to);
+  big.style.color=targetMet?"var(--ac)":pct>0.3?"var(--amb)":"var(--wn)";
+  document.getElementById("h-icy").textContent=innerSurf.toFixed(1)+"°C";
+  document.getElementById("h-disy").textContent=outerSurf.toFixed(1)+"°C";
+  const pill=document.getElementById("h-pill");
+  const iso=Math.abs(((ti-outerSurf)/(ti-to))*100).toFixed(0);
+  pill.textContent="▼ "+(Math.abs(ti-outerSurf)).toFixed(1)+"°C düşüş · %"+iso+" izolasyon · Hedef ≤"+tt+"°C → "+(targetMet?"✓ Tutturuldu":"✗ "+diff+"°C fazla");
+  pill.className="hero-pill "+(targetMet?"hp-ok":"hp-warn");
+
+  // Metrikler
+  document.getElementById("r-u").textContent=U.toFixed(3);
+  document.getElementById("r-rt").textContent=Rt.toFixed(3);
+  document.getElementById("r-q").textContent=q.toFixed(1);
+  document.getElementById("r-tgt").innerHTML=targetMet?'<span class="bdg bok">✓ Tutturuldu</span>':'<span class="bdg" style="background:var(--wdm);color:var(--wn);">✗ '+diff+'°C fazla</span>';
+
+  // Yoğuşma
+  let dewRisk=false,cumR2=0.13;
+  layers.forEach(l=>{const ts=ti-(cumR2/Rt)*(ti-to);if(ts<=dpV)dewRisk=true;cumR2+=l.R;});
+  document.getElementById("r-dew").innerHTML=dewRisk?'<span class="bdg" style="background:var(--wdm);color:var(--wn);">⚠ Risk var</span>':'<span class="bdg bok">✓ Güvende</span>';
+
+  // Arayüz tablosu
+  const inner=pts.filter((_,i)=>i>0&&i<pts.length-1);
+  document.getElementById("ift-body").innerHTML=inner.map((p,i)=>{
+    const prev=i>0?inner[i-1].temp:ti;
+    const col=p.temp>0?"var(--ac)":p.temp>-20?"var(--amb)":"var(--wn)";
+    return`<tr><td style="font-weight:500;">${p.label}</td><td><span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${col};">${p.temp.toFixed(1)}°C</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--tx3);">−${(prev-p.temp).toFixed(1)}°C</td><td style="font-size:11px;color:var(--tx3);">${p.layerName||""}</td></tr>`;
+  }).join("");
+
+  renderLayers();
+  drawCharts(ti,to,layers,rh);
+  drawSchematic(layers,ti,to);
+}
+
+// ═══ KATMAN LİSTESİ ═══
+function renderLayers(){
+  const ti=gi("ti")||20,to=gi("to")||-10;
+  const el=document.getElementById("layers");
+  const tb=document.getElementById("tbar");
+  const total=layers.reduce((s,l)=>s+l.thickness,0);
+  if(!layers.length){el.innerHTML='<div class="lempty">Malzeme seçip ekleyin.</div>';tb.style.display="none";return;}
+  tb.style.display="flex";
+  document.getElementById("tot-mm").textContent=total.toFixed(1);
+  document.getElementById("tot-cm").textContent=(total/10).toFixed(1);
+  const Rt=0.13+0.04+layers.reduce((s,l)=>s+l.R,0);
+  let cumR=0.13;
+  el.innerHTML=layers.map((l,i)=>{
+    const tIn=(ti-(cumR/Rt)*(ti-to)).toFixed(1);
+    cumR+=l.R;
+    const tOut=(ti-(cumR/Rt)*(ti-to)).toFixed(1);
+    return`<div class="li" draggable="true" data-i="${i}" ondragstart="dStart(event,${i})" ondragover="dOver(event,${i})" ondragleave="dLeave(event)" ondrop="dDrop(event,${i})" ondragend="dEnd()">
+      <span class="dh">⠿</span>
+      <div class="lsw" style="background:${CLR[i%CLR.length]};"></div>
+      <div style="flex:1;">
+        <div class="lnm">${l.name}</div>
+        <div class="lsb">λ=${l.lambda} · ${l.thickness}mm · R=${l.R.toFixed(4)}</div>
+      </div>
+      <div class="ltmp"><span class="tin">${tIn}°C</span><span class="tarr">→</span><span class="tout">${tOut}°C</span></div>
+      <button class="btn btsm btd" onclick="removeLayer(${i})" style="margin-left:4px;">✕</button>
+    </div>`;
+  }).join("");
+}
+
+// DRAG & DROP
+let dSrc=null;
+function dStart(e,i){dSrc=i;e.currentTarget.classList.add("dragging");e.dataTransfer.setData("text/plain",String(i));}
+function dOver(e,i){e.preventDefault();if(i!==dSrc){document.querySelectorAll("[data-i]").forEach(el=>el.classList.remove("drag-over"));e.currentTarget.classList.add("drag-over");}}
+function dLeave(e){e.currentTarget.classList.remove("drag-over");}
+function dDrop(e,toI){
+  e.preventDefault();
+  const fromI=parseInt(e.dataTransfer.getData("text/plain"));
+  document.querySelectorAll("[data-i]").forEach(el=>el.classList.remove("drag-over","dragging"));
+  if(isNaN(fromI)||fromI===toI)return;
+  const moved=layers.splice(fromI,1)[0];
+  layers.splice(toI,0,moved);
+  calc();
+}
+function dEnd(){document.querySelectorAll("[data-i]").forEach(el=>el.classList.remove("drag-over","dragging"));dSrc=null;}
+
+function addLayer(){
+  const id=parseInt(document.getElementById("mat-id").value);
+  const th=parseFloat(document.getElementById("mat-th").value)||50;
+  const m=mats.find(x=>x.id===id);
+  if(!m){alert("Lütfen listeden bir malzeme seçin.");return;}
+  if(th<=0){alert("Kalınlık 0'dan büyük olmalı.");return;}
+  layers.push({...m,thickness:th,R:(th/1000)/m.lambda});
+  calc();
+}
+function removeLayer(i){layers.splice(i,1);calc();}
+function clearLayers(){layers=[];calc();}
+
+// ═══ MALZEME DROPDOWN ═══
+function openDrop(){
+  const q=(document.getElementById("mat-srch").value||"").trim().toLowerCase();
+  const drop=document.getElementById("mat-drop");
+  const inp=document.getElementById("mat-srch");
+  // Mobilde fixed pozisyon hesapla
+  if(window.innerWidth<=768){
+    const rect=inp.getBoundingClientRect();
+    drop.style.position="fixed";
+    drop.style.top=(rect.bottom+2)+"px";
+    drop.style.left="10px";
+    drop.style.right="10px";
+    drop.style.width="auto";
+  } else {
+    drop.style.position="absolute";
+    drop.style.top="";
+    drop.style.left="";
+    drop.style.right="";
+    drop.style.width="";
+  }
+  const words=q.split(/\s+/).filter(Boolean);
+  const filtered=mats.filter(m=>!words.length||words.every(w=>(m.name+" "+m.cat+" "+m.lambda).toLowerCase().includes(w)));
+  if(!filtered.length){drop.innerHTML='<div style="padding:12px;text-align:center;color:var(--tx3);font-size:13px;">Sonuç yok</div>';drop.style.display="block";return;}
+  const cats=[...new Set(filtered.map(m=>m.cat))];
+  drop.innerHTML=cats.map(cat=>{
+    const items=filtered.filter(m=>m.cat===cat);
+    return'<div class="mdc">'+cat+"</div>"+items.map(m=>{
+      const nm=q?m.name.replace(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"),'<span class="mdhl">$1</span>'):m.name;
+      return'<div class="mdi" onclick="selMat('+m.id+',\''+m.name.replace(/\'/g,"\\'")+'\','+m.thickness+')"><div class="mdn">'+nm+'</div><div class="mdm">λ='+m.lambda+' · '+m.thickness+'mm · '+m.cat+'</div></div>';
+    }).join("");
+  }).join("");
+  drop.style.display="block";
+  dIdx=-1;
+}
+function selMat(id,name,thick,e){
+  if(e)e.preventDefault();
+  document.getElementById("mat-srch").value=name;
+  document.getElementById("mat-id").value=id;
+  document.getElementById("mat-drop").style.display="none";
+  document.getElementById("mat-th").value=thick;
+  dIdx=-1;
+}
+function dropKey(e){
+  const drop=document.getElementById("mat-drop");
+  const items=drop.querySelectorAll(".mdi");
+  if(drop.style.display==="none"||!items.length)return;
+  if(e.key==="ArrowDown"){e.preventDefault();dIdx=Math.min(dIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle("act",i===dIdx));items[dIdx]&&items[dIdx].scrollIntoView({block:"nearest"});}
+  else if(e.key==="ArrowUp"){e.preventDefault();dIdx=Math.max(dIdx-1,0);items.forEach((el,i)=>el.classList.toggle("act",i===dIdx));items[dIdx]&&items[dIdx].scrollIntoView({block:"nearest"});}
+  else if(e.key==="Enter"){e.preventDefault();const a=drop.querySelector(".act")||items[0];if(a)a.dispatchEvent(new MouseEvent("mousedown"));}
+  else if(e.key==="Escape"){drop.style.display="none";}
+}
+["click","touchstart"].forEach(evt=>document.addEventListener(evt,e=>{
+  const drop=document.getElementById("mat-drop");
+  const inp=document.getElementById("mat-srch");
+  if(drop&&inp&&!drop.contains(e.target)&&e.target!==inp)drop.style.display="none";
+},{passive:true}));
+
+// ═══ MALZEME DB ═══
+function renderMats(){
+  document.getElementById("mat-cnt").textContent=mats.length;
+  document.getElementById("mat-tbl").innerHTML=mats.map(m=>`<tr><td style="font-weight:500;">${m.name}</td><td class="mono">${m.lambda}</td><td class="mono" style="color:var(--ac);font-weight:600;">${m.thickness}mm</td><td class="mono">${m.density}</td><td class="mono">${m.mu}</td><td><span class="bdg ${CBDG[m.cat]||"bgr"}">${m.cat}</span></td><td><button class="btn btsm btd" onclick="delMat(${m.id})">Sil</button></td></tr>`).join("");
+}
+async function addMat(){
+  const name=document.getElementById("mn-nm").value.trim();
+  const lam=parseFloat(document.getElementById("mn-lm").value);
+  const th=parseFloat(document.getElementById("mn-th").value)||50;
+  const dn=parseFloat(document.getElementById("mn-dn").value)||0;
+  const mu=parseFloat(document.getElementById("mn-mu").value)||1;
+  const cat=document.getElementById("mn-ct").value;
+  if(!name||!lam||lam<=0){alert("Ad ve λ değeri zorunlu.");return;}
+  try{
+    const{data,error}=await supa.from('materials').insert([{name,lambda:lam,thickness:th,density:dn,mu,cat}]).select();
+    if(error)throw error;
+    if(data&&data[0]){
+      mats.push({id:data[0].id,name,lambda:lam,thickness:th,density:dn,mu,cat});
+      nid=Math.max(...mats.map(m=>m.id))+1;
+    }
+  }catch(e){
+    console.error('Supabase insert error:',e);
+    mats.push({id:nid++,name,lambda:lam,thickness:th,density:dn,mu,cat});
+  }
+  saveMats();renderMats();document.getElementById("mn-nm").value="";
+}
+async function delMat(id){
+  try{
+    const{error}=await supa.from('materials').delete().eq('id',id);
+    if(error)throw error;
+  }catch(e){console.error('Supabase delete error:',e);}
+  mats=mats.filter(m=>m.id!==id);saveMats();renderMats();
+}
+function resetMats(){if(!confirm("Varsayılana sıfırla?"))return;mats=[...DFLT];nid=13;saveMats();renderMats();alert("Sıfırlandı.");}
+function importXlsx(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      let rows=[];
+      if(file.name.endsWith(".csv")){rows=e.target.result.split(/\r?\n/).slice(1).filter(l=>l).map(l=>l.split(",").map(c=>c.trim()));}
+      else{const wb=XLSX.read(e.target.result,{type:"array"});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:""}).slice(1).filter(r=>r[0]);}
+      let n=0;
+      rows.forEach(r=>{const nm=String(r[0]).trim(),lm=parseFloat(r[1]),th=parseFloat(r[2])||50,dn=parseFloat(r[3])||0,mu=parseFloat(r[4])||1,ct=String(r[5]||"Özel").trim();if(nm&&lm>0){mats.push({id:nid++,name:nm,lambda:lm,thickness:th,density:dn,mu,cat:ct});n++;}});
+      // Supabase'e toplu yükle
+      try{
+        const inserts=rows.filter(r=>String(r[0]).trim()&&parseFloat(r[1])>0).map(r=>({
+          name:String(r[0]).trim(),lambda:parseFloat(r[1]),thickness:parseFloat(r[2])||50,
+          density:parseFloat(r[3])||0,mu:parseFloat(r[4])||1,cat:String(r[5]||'Özel').trim()
+        }));
+        if(inserts.length){
+          const{error}=await supa.from('materials').insert(inserts);
+          if(error)throw error;
+        }
+      }catch(e){console.error('Supabase bulk insert:',e);}
+      saveMats();renderMats();await loadMatsFromDB();
+      document.getElementById("imp-status").innerHTML=`<span style="color:var(--ac);">✓ ${n} malzeme aktarıldı.</span>`;
+    }catch(err){document.getElementById("imp-status").innerHTML='<span style="color:var(--wn);">Hata: Dosya okunamadı.</span>';}
+  };
+  file.name.endsWith(".csv")?r.readAsText(file,"UTF-8"):r.readAsArrayBuffer(file);
+}
+function handleDrop(ev){ev.preventDefault();document.getElementById("upl-area").classList.remove("drag");importXlsx(ev.dataTransfer.files[0]);}
+function dlTemplate(){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Malzeme Adı","λ (W/mK)","Kalınlık (mm)","Yoğunluk (kg/m³)","µ","Kategori"],["Taş yünü",0.035,50,40,1,"Mineral"]]),"Malzemeler");XLSX.writeFile(wb,"malzeme_sablonu.xlsx");}
+
+// ═══ GRAFİKLER ═══
+function drawCharts(ti,to,arr,rh){
+  const{pts,Rt}=calcInterfaces(arr.length?arr:[],ti,to);
+  // Temp chart
+  const lbs=pts.map(p=>p.label);
+  const ts=pts.map(p=>+p.temp.toFixed(2));
+  if(CH.t){CH.t.destroy();}
+  const ctx=document.getElementById("tc");
+  if(ctx)CH.t=new Chart(ctx,{type:"line",data:{labels:lbs,datasets:[{label:"Sıcaklık",data:ts,borderColor:"#00d4a0",backgroundColor:"rgba(0,212,160,.07)",borderWidth:2,pointRadius:4,pointBackgroundColor:ts.map(t=>t>0?"#00d4a0":t>-20?"#ffb347":"#ff6b6b"),tension:.1,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{color:"#9099b0",callback:v=>v+"°C"},grid:{color:"rgba(255,255,255,.05)"},title:{display:true,text:"Sıcaklık (°C)",color:"#9099b0",font:{size:11}}},x:{ticks:{color:"#9099b0",font:{size:11},maxRotation:30},grid:{display:false}}}}});
+  // Dew chart
+  if(!arr.length)return;
+  const dpV=dp(ti,rh);
+  const inner=pts.filter((_,i)=>i>0&&i<pts.length-1);
+  if(CH.d){CH.d.destroy();}
+  const ctx2=document.getElementById("dc");
+  if(ctx2)CH.d=new Chart(ctx2,{type:"line",data:{labels:inner.map(p=>p.label),datasets:[{label:"Yüzey sıcaklığı",data:inner.map(p=>+p.temp.toFixed(2)),borderColor:"#5b9cf6",backgroundColor:"rgba(91,156,246,.06)",borderWidth:2,fill:true,tension:.1,pointRadius:4},{label:`Çiğ noktası (${dpV.toFixed(1)}°C)`,data:Array(inner.length).fill(+dpV.toFixed(2)),borderColor:"#ff6b6b",borderWidth:1.5,borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:"#9099b0",font:{size:11},boxWidth:10}}},scales:{y:{ticks:{color:"#9099b0",callback:v=>v+"°C"},grid:{color:"rgba(255,255,255,.05)"}},x:{ticks:{color:"#9099b0",font:{size:11},maxRotation:30},grid:{display:false}}}}});
+}
+
+
+function drawSchematic(arr,ti,to){
+  const svgEl=document.getElementById("schem-svg");
+  const emptyEl=document.getElementById("schem-empty");
+  if(!svgEl||!emptyEl)return;
+  if(!arr.length){svgEl.style.display="none";emptyEl.style.display="block";return;}
+  svgEl.style.display="block";emptyEl.style.display="none";
+  drawLayerSchematic(arr,ti,to,true);
+}
+function tempToColor(t, tMin, tMax) {
+  // kırmızı (sıcak) → sarı → cyan → mavi (soğuk)
+  const stops = [
+    [1.0,  [220, 38,  38 ]], // kırmızı
+    [0.75, [249, 115, 22 ]], // turuncu
+    [0.5,  [234, 179, 8  ]], // sarı
+    [0.25, [20,  184, 166]], // teal
+    [0.0,  [37,  99,  235]], // mavi
+  ];
+  const pct = tMax === tMin ? 0.5 : Math.max(0, Math.min(1, (t - tMin) / (tMax - tMin)));
+  let lo = stops[stops.length-1], hi = stops[0];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (pct >= stops[i+1][0] && pct <= stops[i][0]) { hi = stops[i]; lo = stops[i+1]; break; }
+  }
+  const range = hi[0] - lo[0];
+  const f = range === 0 ? 0 : (pct - lo[0]) / range;
+  const r = Math.round(lo[1][0] + (hi[1][0] - lo[1][0]) * f);
+  const g = Math.round(lo[1][1] + (hi[1][1] - lo[1][1]) * f);
+  const b = Math.round(lo[1][2] + (hi[1][2] - lo[1][2]) * f);
+  return `rgb(${r},${g},${b})`;
+}
+
+function hexLuma(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
+
+function drawLayerSchematic(layerArr, ti, to, isDarkMode) {
+  const svgEl = document.getElementById('schem-svg');
+  const emptyEl = document.getElementById('schem-empty');
+  if (!svgEl) return;
+
+  if (layerArr.length === 0) {
+    svgEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  svgEl.style.display = 'block';
+  emptyEl.style.display = 'none';
+
+  const {pts, Rt} = calcInterfaces(layerArr, ti, to);
+  const tMin = Math.min(ti, to), tMax = Math.max(ti, to);
+
+  // Boyutlar
+  const W = 900, LABEL_LEFT = 56, LABEL_RIGHT = 56;
+  const drawW = W - LABEL_LEFT - LABEL_RIGHT;
+  const ROW_H = 110, TEMP_H = 28, ARROW_H = 20, LEGEND_H = 36;
+  const totalH = ROW_H + TEMP_H + ARROW_H + LEGEND_H + 20;
+
+  // Kalınlıkları ölçekle — min 24px, max orantılı
+  const totalMM = layerArr.reduce((s,l) => s + l.thickness, 0);
+  const minPx = 24, availPx = drawW - (layerArr.length * 2); // 2px gap
+  const layerPxArr = layerArr.map(l => {
+    const raw = (l.thickness / totalMM) * availPx;
+    return Math.max(minPx, raw);
+  });
+  // Normalize to fit
+  const sumPx = layerPxArr.reduce((s,v) => s+v, 0);
+  const scale = availPx / sumPx;
+  const finalPx = layerPxArr.map(v => Math.max(minPx, Math.round(v * scale)));
+
+  // Renk için arayüz sıcaklıkları
+  const ifTemps = pts.map(p => p.temp); // [iç hava, iç yüzey, ara1...araN, dış hava]
+  const surfTemps = ifTemps.slice(1, ifTemps.length - 1); // yüzeyler
+
+  let svgContent = `<defs>`;
+
+  // Her katman için gradient tanımla
+  layerArr.forEach((l, i) => {
+    const tIn  = surfTemps[i];
+    const tOut = surfTemps[i+1] !== undefined ? surfTemps[i+1] : to;
+    const cIn  = tempToColor(tIn,  tMin, tMax);
+    const cOut = tempToColor(tOut, tMin, tMax);
+    svgContent += `<linearGradient id="lg${i}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="${cIn}"/>
+      <stop offset="100%" stop-color="${cOut}"/>
+    </linearGradient>`;
+  });
+
+  // Sıcaklık ok gradyanı (tüm genişlik boyunca)
+  svgContent += `<linearGradient id="lg-arrow" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%"   stop-color="${tempToColor(ti, tMin, tMax)}"/>
+    <stop offset="100%" stop-color="${tempToColor(to, tMin, tMax)}"/>
+  </linearGradient>`;
+  svgContent += `</defs>`;
+
+  const textColor    = isDarkMode ? '#e8eaf0' : '#1a1a1a';
+  const subColor     = isDarkMode ? '#9099b0' : '#6b7280';
+  const bgRect       = isDarkMode ? '#1c1e27' : '#f9fafb';
+  const borderColor  = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+  // Arka plan
+  svgContent += `<rect width="${W}" height="${totalH}" fill="${bgRect}" rx="8"/>`;
+
+  // Sol etiket: İç / sıcak taraf
+  const tiColor = tempToColor(ti, tMin, tMax);
+  svgContent += `<text x="${LABEL_LEFT-8}" y="${10 + ROW_H/2 - 8}" text-anchor="end" font-size="11" font-family="DM Mono,monospace" fill="${tiColor}" font-weight="600">${ti}°C</text>`;
+  svgContent += `<text x="${LABEL_LEFT-8}" y="${10 + ROW_H/2 + 8}" text-anchor="end" font-size="9" font-family="DM Sans,sans-serif" fill="${subColor}">İÇ ORTAM</text>`;
+
+  // Sağ etiket: Dış / soğuk taraf
+  const toColor = tempToColor(to, tMin, tMax);
+  svgContent += `<text x="${W - LABEL_RIGHT + 8}" y="${10 + ROW_H/2 - 8}" text-anchor="start" font-size="11" font-family="DM Mono,monospace" fill="${toColor}" font-weight="600">${to}°C</text>`;
+  svgContent += `<text x="${W - LABEL_RIGHT + 8}" y="${10 + ROW_H/2 + 8}" text-anchor="start" font-size="9" font-family="DM Sans,sans-serif" fill="${subColor}">DIŞ ORTAM</text>`;
+
+  // Katmanları çiz
+  let x = LABEL_LEFT;
+  layerArr.forEach((l, i) => {
+    const pw = finalPx[i];
+    const tIn  = surfTemps[i];
+    const tOut = surfTemps[i+1] !== undefined ? surfTemps[i+1] : to;
+
+    // Ana katman dikdörtgeni
+    svgContent += `<rect x="${x}" y="10" width="${pw}" height="${ROW_H}" fill="url(#lg${i})" rx="0"/>`;
+
+    // Kenara border
+    svgContent += `<rect x="${x}" y="10" width="${pw}" height="${ROW_H}" fill="none" stroke="${borderColor}" stroke-width="1" rx="0"/>`;
+
+    // Katman adı (ortada, dikey yazı eğer dar ise)
+    const nameShort = l.name.length > 18 ? l.name.substring(0,16)+'…' : l.name;
+    const midX = x + pw/2;
+    const midY = 10 + ROW_H/2;
+
+    // Label rengi: luma'ya göre siyah veya beyaz
+    const tMid = (tIn + tOut) / 2;
+    const cMid = tempToColor(tMid, tMin, tMax);
+    const rgb = cMid.match(/\d+/g).map(Number);
+    const lum = hexLuma(rgb[0], rgb[1], rgb[2]);
+    const labelCol = lum > 140 ? '#1a1a1a' : '#ffffff';
+
+    if (pw >= 60) {
+      svgContent += `<text x="${midX}" y="${midY - 10}" text-anchor="middle" font-size="${pw < 90 ? 9 : 11}" font-family="DM Sans,sans-serif" fill="${labelCol}" font-weight="600">${nameShort}</text>`;
+      svgContent += `<text x="${midX}" y="${midY + 6}" text-anchor="middle" font-size="10" font-family="DM Mono,monospace" fill="${labelCol}" opacity="0.85">${l.thickness}mm</text>`;
+      svgContent += `<text x="${midX}" y="${midY + 20}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${labelCol}" opacity="0.7">λ=${l.lambda}</text>`;
+    } else if (pw >= 32) {
+      svgContent += `<text x="${midX}" y="${midY}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${labelCol}" font-weight="600">${l.thickness}mm</text>`;
+    }
+
+    // Arayüz sıcaklığı — alt etiket
+    const itColor = tempToColor(tIn, tMin, tMax);
+    svgContent += `<text x="${x + 3}" y="${10 + ROW_H + TEMP_H - 4}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${itColor}" font-weight="500">${tIn.toFixed(1)}°</text>`;
+
+    x += pw + 2;
+  });
+
+  // Son arayüz sıcaklığı (dış yüzey)
+  const lastT = surfTemps[surfTemps.length-1];
+  const lastColor = tempToColor(lastT, tMin, tMax);
+  svgContent += `<text x="${x - 2 + 3}" y="${10 + ROW_H + TEMP_H - 4}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${lastColor}" font-weight="500">${lastT.toFixed(1)}°</text>`;
+
+  // Isı akışı oku (tüm genişlik boyunca gradyanlı)
+  const arY = 10 + ROW_H + TEMP_H + 6;
+  const arrowW = drawW + 4;
+  svgContent += `<rect x="${LABEL_LEFT - 2}" y="${arY}" width="${arrowW}" height="6" fill="url(#lg-arrow)" rx="3"/>`;
+  // Ok başı
+  svgContent += `<polygon points="${LABEL_LEFT+arrowW},${arY+3} ${LABEL_LEFT+arrowW-8},${arY-2} ${LABEL_LEFT+arrowW-8},${arY+8}" fill="${tempToColor(to, tMin, tMax)}"/>`;
+  svgContent += `<text x="${LABEL_LEFT + arrowW/2}" y="${arY - 4}" text-anchor="middle" font-size="9" font-family="DM Sans,sans-serif" fill="${subColor}">ISINMA YÖNÜ ←&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ SOĞUMA YÖNÜ</text>`;
+
+  // Alt legend: renk açıklaması
+  const legY = arY + 20;
+  const legStops = [{t: tMax, label: `${tMax}°C (Sıcak)`}, {t:(tMax+tMin)/2, label:`${((tMax+tMin)/2).toFixed(0)}°C`}, {t: tMin, label:`${tMin}°C (Soğuk)`}];
+  const legX = [LABEL_LEFT + drawW*0.1, LABEL_LEFT + drawW*0.5, LABEL_LEFT + drawW*0.9];
+  legStops.forEach((s,i) => {
+    const cx = legX[i];
+    const c = tempToColor(s.t, tMin, tMax);
+    svgContent += `<circle cx="${cx}" cy="${legY + 6}" r="5" fill="${c}"/>`;
+    svgContent += `<text x="${cx + 9}" y="${legY + 10}" font-size="9" font-family="DM Mono,monospace" fill="${subColor}">${s.label}</text>`;
+  });
+
+  svgContent += `<text x="${W/2}" y="${legY + 10}" text-anchor="middle" font-size="9" font-family="DM Sans,sans-serif" fill="${subColor}" opacity="0.5">Katman genişlikleri gerçek kalınlıklara orantılıdır</text>`;
+
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${totalH}`);
+  svgEl.setAttribute('height', totalH);
+  svgEl.innerHTML = svgContent;
+}
+
+
+
+
+// ═══ AI ═══
+function buildCtx(){
+  const ti=gi("ti")||20,to=gi("to")||-10,tt=gi("tt")||50,rh=getRH();
+  const Rt=0.13+0.04+layers.reduce((s,l)=>s+l.R,0),U=1/Rt;
+  const outerSurf=layers.length?(ti-((0.13+layers.reduce((s,l)=>s+l.R,0))/Rt)*(ti-to)).toFixed(1):to;
+  const total=layers.reduce((s,l)=>s+l.thickness,0);
+  const ls=layers.length?layers.map((l,i)=>`K${i+1}:${l.name} ${l.thickness}mm λ=${l.lambda}`).join("; "):"(boş)";
+  return `İç=${ti}°C Dış=${to}°C RH=${rh}% DışYüzey=${outerSurf}°C HedYüzey=${tt}°C Toplam=${total}mm U=${U.toFixed(3)} W/m²K\nKatmanlar: ${ls}\nMalzeme DB: ${mats.map(m=>m.name).join(", ")}`;
+}
+async function callAI(prompt){
+  const chat=document.getElementById("ai-chat");
+  const t=document.createElement("div");t.className="aib ait";t.textContent="Claude analiz ediyor...";chat.appendChild(t);chat.scrollTop=chat.scrollHeight;
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"Sen bir termal yalıtım mühendislik asistanısın. Türkçe, teknik, sayısal yanıt ver. Markdown kullanma.",messages:[{role:"user",content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||"").join("")||"Yanıt alınamadı.";
+    t.remove();const m=document.createElement("div");m.className="aib aia";m.textContent=text;chat.appendChild(m);chat.scrollTop=chat.scrollHeight;
+  }catch(err){t.remove();const m=document.createElement("div");m.className="aib aia";m.textContent="API hatası: "+err.message;chat.appendChild(m);}
+}
+function addUserMsg(txt){const m=document.createElement("div");m.className="aib aiu";m.textContent=txt;document.getElementById("ai-chat").appendChild(m);}
+const PROMPTS={
+  opt:ctx=>ctx+"\n\nBu yapıyı optimize et: hedef yüzey sıcaklığını tutturan, minimum kalınlıkta kombinasyon öner. Kalınlıkları mm ver.",
+  dew:ctx=>ctx+"\n\nDetaylı yoğuşma analizi yap. Hangi arayüzlerde risk var? Öneri ver.",
+  alt:ctx=>ctx+"\n\nBu koşullar için 3 farklı katman alternatifi öner: min kalınlık / en iyi izolasyon / min yoğuşma riski."
+};
+function ai(t){addUserMsg({opt:"Optimize et",dew:"Yoğuşma analizi",alt:"Alternatif öner"}[t]);callAI(PROMPTS[t](buildCtx()));}
+function aiCustom(){const q=document.getElementById("ai-q").value.trim();if(!q)return;addUserMsg(q);document.getElementById("ai-q").value="";callAI(buildCtx()+"\n\nSoru: "+q);}
+
+// ═══ RAPOR ═══
+const LOGO_DATA="data:image/png;base64,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";
+function buildReport(){
+  const prj=document.getElementById("rp-prj").value||"Belirtilmedi";
+  const loc=document.getElementById("rp-loc").value||"Belirtilmedi";
+  const aut=document.getElementById("rp-aut").value||"Belirtilmedi";
+  const dat=document.getElementById("rp-dat").value||new Date().toLocaleDateString("tr-TR");
+  const ti=gi("ti")||20,to=gi("to")||-10,tt=gi("tt")||50,rh=getRH();
+  const Rt=0.13+0.04+layers.reduce((s,l)=>s+l.R,0),U=1/Rt,q=U*(ti-to);
+  const dpV=dp(ti,rh);
+  const outerSurf=layers.length?(ti-((0.13+layers.reduce((s,l)=>s+l.R,0))/Rt)*(ti-to)).toFixed(1):to;
+  const total=layers.reduce((s,l)=>s+l.thickness,0);
+  const targetMet=parseFloat(outerSurf)<=tt;
+  const repNo="PKM-"+dat.replace(/\./g,"")+"-"+Math.floor(Math.random()*9000+1000);
+  const schEl=document.getElementById("schem-svg");
+  const schHtml=schEl&&schEl.style.display!=="none"?`<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:18px;"><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">KATMAN ŞEMATİĞİ</div>${schEl.outerHTML.replace('id="schem-svg"','style="width:100%;display:block;"')}  </div>`:"";
+  const lRows=layers.map((l,i)=>`<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:6px 9px;">${i+1}</td><td style="padding:6px 9px;font-weight:600;">${l.name}</td><td style="padding:6px 9px;font-weight:700;color:#059669;">${l.thickness}mm</td><td style="padding:6px 9px;">${l.lambda}</td><td style="padding:6px 9px;">${l.R.toFixed(4)}</td></tr>`).join("");
+  const{pts}=calcInterfaces(layers,ti,to);
+  const ifRows=pts.filter((_,i)=>i>0&&i<pts.length-1).map((p,idx,a)=>{const prev=idx>0?a[idx-1].temp:ti;return`<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:6px 9px;">${p.label}</td><td style="padding:6px 9px;font-weight:700;color:#059669;">${p.temp.toFixed(1)}°C</td><td style="padding:6px 9px;color:#9ca3af;">−${(prev-p.temp).toFixed(1)}°C</td><td style="padding:6px 9px;color:#9ca3af;font-size:11px;">${p.layerName||""}</td></tr>`;}).join("");
+  const repHTML=`<div style="font-family:Arial,sans-serif;color:#1a1a1a;background:#fff;padding:28px;max-width:800px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #cc0000;padding-bottom:14px;margin-bottom:8px;">
+    <img src="${LOGO_DATA}" style="height:52px;width:52px;object-fit:cover;border-radius:10px;">
+    <div style="text-align:right;"><div style="font-size:18px;font-weight:700;">Termal Yalıtım Tasarım Raporu</div><div style="font-size:11px;color:#6b7280;margin-top:3px;">ThermoCalc Pro · ${repNo} · ${dat}</div></div>
+  </div>
+  <div style="font-size:10px;color:#9ca3af;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6;">Prokom Kompansatör Sanayi ve Ticaret A.Ş. · ThermoCalc Pro</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;font-size:13px;">
+    <div style="background:#f9fafb;padding:10px;border-radius:6px;border:1px solid #e5e7eb;"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Proje</div><div style="font-weight:700;">${prj}</div></div>
+    <div style="background:#f9fafb;padding:10px;border-radius:6px;border:1px solid #e5e7eb;"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Uygulama Yeri</div><div style="font-weight:700;">${loc}</div></div>
+    <div style="background:#f9fafb;padding:10px;border-radius:6px;border:1px solid #e5e7eb;"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Hazırlayan</div><div style="font-weight:700;">${aut}</div></div>
+    <div style="background:#f9fafb;padding:10px;border-radius:6px;border:1px solid #e5e7eb;"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Koşullar</div><div style="font-weight:700;">İç:${ti}°C / Dış:${to}°C / RH:${rh}% / Çiğ:${dpV.toFixed(1)}°C</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#fff7f0;padding:14px;border-radius:8px;border:1px solid #fed7aa;text-align:center;margin-bottom:18px;">
+    <div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">DIŞ YÜZEY</div><div style="font-size:28px;font-weight:700;color:#059669;">${outerSurf}°C</div></div>
+    <div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">KALINLIK</div><div style="font-size:28px;font-weight:700;color:#059669;">${total.toFixed(0)}mm</div></div>
+    <div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">U DEĞERİ</div><div style="font-size:28px;font-weight:700;">${U.toFixed(3)}</div><div style="font-size:9px;color:#9ca3af;">W/m²K</div></div>
+    <div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">HEDEF</div><div style="font-size:14px;font-weight:700;color:${targetMet?"#059669":"#dc2626"};margin-top:6px;">${targetMet?"✓ TUTTURULDU":"✗ AŞILDI"}</div></div>
+  </div>
+  ${schHtml}
+  <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Arayüz Sıcaklıkları</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;"><thead><tr style="background:#f9fafb;"><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Konum</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Sıcaklık</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Düşüş</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Katman</th></tr></thead><tbody>${ifRows||"<tr><td colspan='4' style='padding:12px;text-align:center;color:#9ca3af;'>Katman yok</td></tr>"}</tbody></table>
+  <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Katman Yapısı</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;"><thead><tr style="background:#f9fafb;"><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">No</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Malzeme</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Kalınlık</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">λ</th><th style="padding:7px 9px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb;">R</th></tr></thead><tbody>${lRows||"<tr><td colspan='5' style='padding:12px;text-align:center;color:#9ca3af;'>Katman yok</td></tr>"}</tbody></table>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Hesaplama Metodolojisi</div>
+    <div style="font-size:11px;color:#374151;line-height:1.8;font-family:monospace;">
+      R_i = d_i / λ_i [m²K/W] · R_T = 0.13 + Σ(R_i) + 0.04 [ISO 6946] · U = 1/R_T = ${U.toFixed(4)} W/m²K<br>
+      T_x = T_iç − (R_kümülatif/R_T) × (T_iç − T_dış) · q = U × ΔT = ${q.toFixed(2)} W/m²<br>
+      Çiğ noktası (Magnus): T_dp = ${dpV.toFixed(2)}°C [RH=${rh}%]
+    </div>
+  </div>
+  <div style="border-top:2px solid #e5e7eb;padding-top:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+    <img src="${LOGO_DATA}" style="height:32px;width:32px;object-fit:cover;border-radius:5px;opacity:.6;">
+    <div style="font-size:9px;color:#9ca3af;line-height:1.7;text-align:right;">
+      <div style="font-weight:700;color:#6b7280;">© ${new Date().getFullYear()} Prokom Kompansatör Sanayi ve Ticaret A.Ş. — Tüm hakları saklıdır.</div>
+      <div>Bu rapor ThermoCalc Pro yazılımı tarafından üretilmiştir. İzinsiz kullanım yasaktır. Rapor No: ${repNo}</div>
+    </div>
+  </div>
+</div>`;
+  const out=document.getElementById("rep-out");
+  out.style.display="block";
+  out.innerHTML=repHTML;
+  out.scrollIntoView({behavior:"smooth",block:"start"});
+  saveArchive({repNo,prj,loc,aut,dat,ti,to,outerSurf:parseFloat(outerSurf),total,U:+U.toFixed(3),targetMet,html:repHTML});
+  updateArcBadge();
+}
+function printReport(){
+  const out=document.getElementById("rep-out");
+  if(!out||!out.innerHTML.trim()){alert("Önce Rapor oluştur butonuna basın.");return;}
+  const blob=new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial;padding:20px;color:#1a1a1a;background:#fff;}table{width:100%;border-collapse:collapse;}@media print{.np{display:none!important;}}</style></head><body>"+out.innerHTML+"<br><div class='np' style='text-align:center;margin-top:20px;'><button onclick='window.print()' style='padding:10px 24px;background:#cc0000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;'>🖨 Yazdır / PDF</button></div></body></html>"],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.target="_blank";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+
+// ═══ ARŞİV ═══
+function getArc(){try{return JSON.parse(localStorage.getItem("tc-arc")||"[]");}catch(e){return[];}}
+function saveArchive(entry){const a=getArc();entry.savedAt=new Date().toISOString();a.unshift(entry);try{localStorage.setItem("tc-arc",JSON.stringify(a));}catch(e){}}
+function updateArcBadge(){const el=document.getElementById("arc-badge");if(el)el.textContent=getArc().length;}
+function clearArchive(){if(!confirm("Tüm arşiv silinecek?"))return;localStorage.removeItem("tc-arc");updateArcBadge();renderArchive();}
+function renderArchive(){
+  const all=getArc();
+  const q=(document.getElementById("arc-srch")||{}).value||"";
+  const stats=document.getElementById("arc-stats");
+  if(stats&&all.length){stats.innerHTML=`<span class="stchip">Toplam: <strong>${all.length}</strong></span><span class="stchip">Son: <strong>${all[0].dat||"—"}</strong></span>`;}
+  const list=document.getElementById("arc-list");if(!list)return;
+  const filtered=all.filter(r=>!q||(r.prj||"").includes(q)||(r.aut||"").includes(q)||(r.repNo||"").includes(q));
+  if(!filtered.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--tx3);font-size:13px;">Arşiv boş. Rapor oluşturunca buraya kaydedilir.</div>';return;}
+  list.innerHTML=filtered.map((r,i)=>`<div class="arc">
+    <div class="acbd">
+      <div><div class="apnm">${r.prj||"İsimsiz"}</div><div class="ano">${r.repNo||""} · ${r.dat||""}</div></div>
+      <div class="brow"><button class="btn btsm" onclick="viewArc(${i})">Görüntüle</button><button class="btn btsm" onclick="printArc(${i})">PDF</button><button class="btn btsm btd" onclick="delArc(${i})">Sil</button></div>
+    </div>
+    <div style="font-size:12px;color:var(--tx2);">👤 ${r.aut||"—"}</div>
+    <div class="amet">
+      <span class="ach aok">Dış yüzey: ${r.outerSurf}°C</span>
+      <span class="ach abl">Kalınlık: ${r.total}mm</span>
+      <span class="ach abl">U: ${r.U} W/m²K</span>
+      <span class="ach ${r.targetMet?"aok":"ach"}" style="${r.targetMet?"":"background:var(--wdm);color:var(--wn);"}">${r.targetMet?"✓ Hedef OK":"✗ Hedef Aşıldı"}</span>
+    </div>
+  </div>`).join("");
+}
+function viewArc(i){
+  const r=getArc()[i];if(!r||!r.html)return;
+  nav("analysis");
+  const out=document.getElementById("rep-out");
+  out.style.display="block";out.innerHTML=r.html;
+  setTimeout(()=>out.scrollIntoView({behavior:"smooth",block:"start"}),200);
+}
+function printArc(i){
+  const r=getArc()[i];if(!r||!r.html)return;
+  const blob=new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial;padding:20px;color:#1a1a1a;background:#fff;}table{width:100%;border-collapse:collapse;}@media print{.np{display:none!important;}}</style></head><body>"+r.html+"<br><div class='np' style='text-align:center;margin-top:20px;'><button onclick='window.print()' style='padding:10px 24px;background:#cc0000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;'>🖨 Yazdır / PDF</button></div></body></html>"],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.target="_blank";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+function delArc(i){const a=getArc();a.splice(i,1);try{localStorage.setItem("tc-arc",JSON.stringify(a));}catch(e){}updateArcBadge();renderArchive();}
+
+// ═══ YEDEK ═══
+function exportData(){const d=JSON.stringify({mats,arc:getArc(),date:new Date().toISOString()},null,2);const a=document.createElement("a");a.href="data:application/json,"+encodeURIComponent(d);a.download="thermocalc_yedek.json";a.click();}
+function importData(file){if(!file)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.mats&&d.mats.length){mats=d.mats;nid=Math.max(...mats.map(m=>m.id))+1;saveMats();}if(d.arc){try{localStorage.setItem("tc-arc",JSON.stringify(d.arc));}catch(e2){}}renderMats();updateArcBadge();alert("Yedek yüklendi!");}catch(err){alert("Dosya okunamadı.");}};r.readAsText(file);}
+
+// ═══ INIT ═══
+document.getElementById("rp-dat").value=new Date().toLocaleDateString("tr-TR");
+onAppType();
+renderMats();
+calc();
+updateArcBadge();
+// Supabase'den yükle
+loadMatsFromDB();
+</script>
+</body>
+</html>
