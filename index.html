@@ -689,7 +689,7 @@ function renderMats(){
   document.getElementById("mat-cnt").textContent=mats.length;
   document.getElementById("mat-tbl").innerHTML=mats.map(m=>`<tr><td style="font-weight:500;">${m.name}</td><td class="mono">${m.lambda}</td><td class="mono" style="color:var(--ac);font-weight:600;">${m.thickness}mm</td><td class="mono">${m.density}</td><td class="mono">${m.mu}</td><td><span class="bdg ${CBDG[m.cat]||"bgr"}">${m.cat}</span></td><td><button class="btn btsm btd" onclick="delMat(${m.id})">Sil</button></td></tr>`).join("");
 }
-async function addMat(){
+function addMat(){
   const name=document.getElementById("mn-nm").value.trim();
   const lam=parseFloat(document.getElementById("mn-lm").value);
   const th=parseFloat(document.getElementById("mn-th").value)||50;
@@ -699,21 +699,17 @@ async function addMat(){
   if(!name||!lam||lam<=0){alert("Ad ve λ değeri zorunlu.");return;}
   try{
     if(!supa&&!initSupa()){mats.push({id:nid++,name,lambda:lam,thickness:th,density:dn,mu,cat});saveMats();renderMats();document.getElementById('mn-nm').value='';return;}
-    const{data,error}=await supa.from('materials').insert([{name,lambda:lam,thickness:th,density:dn,mu,cat}]).select();
-    if(error)throw error;
-    if(data&&data[0]){
-      mats.push({id:data[0].id,name,lambda:lam,thickness:th,density:dn,mu,cat});
-      nid=Math.max(...mats.map(m=>m.id))+1;
-    }
+    mats.push({id:nid++,name,lambda:lam,thickness:th,density:dn,mu,cat});
+    if(supa){supa.from('materials').insert([{name,lambda:lam,thickness:th,density:dn,mu,cat}]).then(({error})=>{if(error)console.error('Insert:',error);});}
   }catch(e){
     console.error('Supabase insert error:',e);
     mats.push({id:nid++,name,lambda:lam,thickness:th,density:dn,mu,cat});
   }
   saveMats();renderMats();document.getElementById("mn-nm").value="";
 }
-async function delMat(id){
+function delMat(id){
   try{
-    if(supa||initSupa()){const{error}=await supa.from('materials').delete().eq('id',id);if(error)throw error;}
+    if(supa){supa.from('materials').delete().eq('id',id).then(({error})=>{if(error)console.error('Delete:',error);});}
     if(error)throw error;
   }catch(e){console.error('Supabase delete error:',e);}
   mats=mats.filter(m=>m.id!==id);saveMats();renderMats();
@@ -735,9 +731,11 @@ function importXlsx(file){
           name:String(r[0]).trim(),lambda:parseFloat(r[1]),thickness:parseFloat(r[2])||50,
           density:parseFloat(r[3])||0,mu:parseFloat(r[4])||1,cat:String(r[5]||'Özel').trim()
         }));
-        if(inserts.length){
-          const{error}=await supa.from('materials').insert(inserts);
-          if(error)throw error;
+        if(inserts.length && supa){
+          supa.from('materials').insert(inserts).then(({error})=>{
+            if(error)console.error('Bulk insert:',error);
+            else loadMatsFromDB();
+          });
         }
       }catch(e){console.error('Supabase bulk insert:',e);}
       saveMats();renderMats();loadMatsFromDB();
