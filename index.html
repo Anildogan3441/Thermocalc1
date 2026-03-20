@@ -433,6 +433,7 @@ async function loadMatsFromDB(){
   }catch(e){
     showDBStatus('⚠ Veritabanına bağlanılamadı, yerel liste kullanılıyor','warn');
     console.error('Supabase load error:',e);
+    if(!mats||mats.length===0){mats=[...DFLT];nid=13;renderMats();}
   }
 }
 
@@ -616,6 +617,8 @@ function openDrop(){
   const q=(document.getElementById("mat-srch").value||"").trim().toLowerCase();
   const drop=document.getElementById("mat-drop");
   const inp=document.getElementById("mat-srch");
+  // mats henüz yüklenmediyse varsayılanları kullan
+  if(!mats||mats.length===0){mats=[...DFLT];nid=13;}
   // Mobilde fixed pozisyon hesapla
   if(window.innerWidth<=768){
     const rect=inp.getBoundingClientRect();
